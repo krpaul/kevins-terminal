@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Add a magnet link to qBittorrent on the home server, saved to Movies or Shows.
+#
+#   qadd movies 'magnet:?xt=urn:btih:...'
+#   qadd shows  'magnet:?xt=...'
+#   qadd                      # prompts for both
+#
+# Runs curl on the server over SSH against qBittorrent's Web API on localhost,
+# so the Web UI never has to be exposed. Needs "Bypass authentication for
+# clients on localhost" enabled in qBittorrent (Settings > Web UI).
+set -euo pipefail
+
+HOST="${QADD_HOST:-kevin@pollux-v3}"
+PORT="${QADD_PORT:-8080}"
+BASE="${QADD_BASE:-/mnt/hdd}"
+
+usage() {
+  echo "usage: qadd [movies|shows] [magnet-link]" >&2
+  exit 2
+}
+
+kind="${1:-}"
+magnet="${2:-}"
+
+if [ -z "$kind" ]; then
+  read -rp "Location [movies/shows]: " kind
+fi
+
+case "$(printf '%s' "$kind" | tr '[:upper:]' '[:lower:]')" in
+  m|movie|movies) dest="$BASE/Movies" ;;
+  s|show|shows)   dest="$BASE/Shows" ;;
+  *) echo "qadd: unknown location '$kind' (use movies or shows)" >&2; usage ;;
+esac
+
+if [ -z "$magnet" ]; then
+  read -rp "Magnet link: " magnet
+fi
+
+case "$magnet" in
+  magnet:\?*) ;;
+  *) echo "qadd: that doesn't look like a magnet link" >&2; exit 1 ;;
+esac
+
+# The magnet goes in on stdin so shell quoting on either end can't mangle it.
+# autoTMM=false makes qBittorrent honour savepath instead of its category rules.
+result=$(printf '%s' "$magnet" | ssh -o BatchMode=yes "$HOST" \
+  "curl -sS --fail-with-body --max-time 15 \
+     --data-urlencode 'urls@-' \
+     --data-urlencode 'savepath=$dest' \
+     --data-urlencode 'autoTMM=false' \
+     'http://localhost:$PORT/api/v2/torrents/add'") || {
+  echo "qadd: couldn't reach qBittorrent's Web UI on $HOST:$PORT" >&2
+  echo "      is qbittorrent-nox running, with the Web UI enabled and localhost auth bypass on?" >&2
+  [ -n "${result:-}" ] && echo "      response: $result" >&2
+  exit 1
+}
+
+if [ "$result" = "Ok." ]; then
+  echo "queued -> $dest"
+else
+  echo "qadd: qBittorrent rejected it: $result" >&2
+  exit 1
+fi

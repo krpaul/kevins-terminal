@@ -60,4 +60,7 @@ clone_or_pull https://github.com/sindresorhus/pure.git "$ZSH_DIR/custom/pure"
 link "$REPO/zsh/zshrc" "$HOME/.zshrc"
 link "$REPO/tmux/tmux.conf" "$HOME/.tmux.conf"
 
+mkdir -p "$HOME/.local/bin"
+link "$REPO/bin/qadd" "$HOME/.local/bin/qadd"
+
 echo "done. Open a new terminal or run: exec zsh"
