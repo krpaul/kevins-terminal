@@ -36,9 +36,28 @@ link() {
   echo "linked    $dst -> $src"
 }
 
+# Install a package with whichever package manager is available.
+ensure() {
+  local pkg="$1"
+  if command -v "$pkg" >/dev/null; then
+    echo "found     $pkg"
+  elif command -v brew >/dev/null; then
+    echo "installing $pkg"
+    brew install --quiet "$pkg"
+  elif command -v apt-get >/dev/null; then
+    echo "installing $pkg"
+    sudo apt-get install -y "$pkg"
+  else
+    echo "install: please install $pkg manually" >&2
+  fi
+}
+
+ensure tmux
+
 clone_or_pull https://github.com/ohmyzsh/ohmyzsh.git "$ZSH_DIR"
 clone_or_pull https://github.com/sindresorhus/pure.git "$ZSH_DIR/custom/pure"
 
 link "$REPO/zsh/zshrc" "$HOME/.zshrc"
+link "$REPO/tmux/tmux.conf" "$HOME/.tmux.conf"
 
 echo "done. Open a new terminal or run: exec zsh"
