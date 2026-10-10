@@ -32,6 +32,15 @@ HISTSIZE=50000
 SAVEHIST=50000
 setopt hist_ignore_all_dups hist_reduce_blanks
 
+# --- Editing ----------------------------------------------------------------
+# Option+Backspace deletes one word (stopping at / - . and other punctuation).
+# Ctrl+W deletes a whole argument: a full path, or a quoted string.
+autoload -Uz backward-kill-word-match
+zle -N backward-kill-arg backward-kill-word-match
+zstyle ':zle:backward-kill-arg' word-style shell
+bindkey '^W' backward-kill-arg
+bindkey '^[^?' backward-kill-word
+
 # --- Prompt: Pure (current directory + git branch, git work done async) ------
 PURE_GIT_PULL=0                        # never `git fetch` in the background
 zstyle ':prompt:pure:title' show false # titles are set below
@@ -47,7 +56,7 @@ unset pure_dir
 
 # --- Titles -----------------------------------------------------------------
 # Tab title is "dir" at the prompt and "dir: command" while something runs,
-# prefixed with the host over SSH. tmux uses it to name its windows.
+# prefixed with the host over SSH. Inside tmux, windows show the directory only.
 _title_set() {
   printf '\e]0;%s\a' "${SSH_CONNECTION:+${HOST%%.*}: }${(%):-%1~}${1:+: $1}"
 }
